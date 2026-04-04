@@ -1,6 +1,6 @@
 # OpenClaw Todo App: The Open-Source Linear Alternative for SaaS
 
-[![GitHub stars](https://img.shields.io/github/stars/clawnify/todo-app?style=social)](https://github.com/clawnify/todo-app/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/clawnify/open-todo?style=social)](https://github.com/clawnify/open-todo/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![OpenClaw Ecosystem](https://img.shields.io/badge/Ecosystem-OpenClaw-blue)](https://github.com/openclaw/openclaw)
 
@@ -8,7 +8,7 @@ A Linear-inspired issue tracker for building project management tools, bug track
 
 Built with **Preact + Hono + SQLite**. Ships with a dual-mode UI: one for humans (click-to-edit, inline forms) and one for AI agents (explicit buttons, large targets).
 
-![Clawnify Todo App — Issues grouped by status](https://github.com/clawnify/todo-app/raw/main/docs/screenshot.png)
+![Clawnify Todo App — Issues grouped by status](https://github.com/clawnify/open-todo/raw/main/docs/screenshot.png)
 *Issues grouped by status with priority indicators, colored labels, and project tags.*
 
 ## What Is It?
@@ -35,8 +35,8 @@ Unlike Linear or Jira, this runs entirely on your own infrastructure with no API
 ## Quickstart
 
 ```bash
-git clone https://github.com/clawnify/todo-app.git
-cd todo-app
+git clone https://github.com/clawnify/open-todo.git
+cd open-todo
 pnpm install
 pnpm run dev
 ```
