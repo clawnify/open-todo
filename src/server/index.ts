@@ -1,7 +1,14 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { query, get, run } from "./db";
+import { initDB, query, get, run } from "./db.js";
 
-const app = new OpenAPIHono();
+type Env = { Bindings: { DB: D1Database } };
+
+const app = new OpenAPIHono<Env>();
+
+app.use("*", async (c, next) => {
+  initDB(c.env.DB);
+  await next();
+});
 
 // ── Shared Schemas ─────────────────────────────────────────────────
 
@@ -69,7 +76,7 @@ async function nextIdentifier(): Promise<string> {
   const prefix = await get<{ value: string }>("SELECT value FROM _meta WHERE key = 'identifier_prefix'");
   const counter = await get<{ value: string }>("SELECT value FROM _meta WHERE key = 'issue_counter'");
   const next = parseInt(counter?.value || "0", 10) + 1;
-  await run("UPDATE _meta SET value = ? WHERE key = 'issue_counter'", String(next));
+  await run("UPDATE _meta SET value = ? WHERE key = 'issue_counter'", [String(next)]);
   return `${prefix?.value || "TASK"}-${next}`;
 }
 
@@ -165,7 +172,7 @@ app.openapi(listIssues, async (c) => {
 
     const countResult = await get<{ total: number }>(
       "SELECT COUNT(*) as total FROM issues i" + whereSQL,
-      ...whereParams,
+      [...whereParams],
     );
     const total = countResult?.total || 0;
 
@@ -191,7 +198,7 @@ app.openapi(listIssues, async (c) => {
          END,
          i.sort_order, i.id DESC
        LIMIT ? OFFSET ?`,
-      ...whereParams, limit, offset,
+      [...whereParams, limit, offset],
     );
 
     const issueIds = (issues as { id: number }[]).map((i) => i.id);
@@ -202,7 +209,7 @@ app.openapi(listIssues, async (c) => {
          FROM issue_labels il
          JOIN labels l ON il.label_id = l.id
          WHERE il.issue_id IN (${issueIds.map(() => "?").join(",")})`,
-        ...issueIds,
+        [...issueIds],
       );
     }
 
@@ -260,11 +267,11 @@ app.openapi(createIssue, async (c) => {
     await run(
       `INSERT INTO issues (identifier, title, description, status, priority, project_id, due_date, sort_order)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      identifier, title, body.description || "", body.status || "todo",
-      body.priority || "none", body.project_id || null, body.due_date || "", body.sort_order || 0,
+      [identifier, title, body.description || "", body.status || "todo",
+      body.priority || "none", body.project_id || null, body.due_date || "", body.sort_order || 0],
     );
 
-    const issue = await get("SELECT * FROM issues WHERE identifier = ?", identifier);
+    const issue = await get("SELECT * FROM issues WHERE identifier = ?", [identifier]);
     return c.json({ issue }, 201);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -294,15 +301,15 @@ app.openapi(getIssue, async (c) => {
     const issue = await get(
       `SELECT i.*, p.name as project_name, p.icon as project_icon
        FROM issues i LEFT JOIN projects p ON i.project_id = p.id WHERE i.id = ?`,
-      id,
+      [id],
     );
     if (!issue) return c.json({ error: "Issue not found" }, 404);
 
     const labels = await query(
       `SELECT l.id, l.name, l.color FROM issue_labels il JOIN labels l ON il.label_id = l.id WHERE il.issue_id = ?`,
-      id,
+      [id],
     );
-    const comments = await query("SELECT * FROM comments WHERE issue_id = ? ORDER BY created_at ASC", id);
+    const comments = await query("SELECT * FROM comments WHERE issue_id = ? ORDER BY created_at ASC", [id]);
 
     return c.json({ issue: { ...issue, labels, comments } }, 200);
   } catch (err: unknown) {
@@ -361,10 +368,10 @@ app.openapi(updateIssue, async (c) => {
     setClauses.push("updated_at = datetime('now')");
     setParams.push(id);
 
-    const result = await run("UPDATE issues SET " + setClauses.join(", ") + " WHERE id = ?", ...setParams);
+    const result = await run("UPDATE issues SET " + setClauses.join(", ") + " WHERE id = ?", [...setParams]);
     if (result.changes === 0) return c.json({ error: "Issue not found" }, 404);
 
-    const issue = await get("SELECT * FROM issues WHERE id = ?", id);
+    const issue = await get("SELECT * FROM issues WHERE id = ?", [id]);
     return c.json({ issue }, 200);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -391,7 +398,7 @@ app.openapi(deleteIssue, async (c) => {
     const id = parseInt(idStr, 10);
     if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
 
-    const result = await run("DELETE FROM issues WHERE id = ?", id);
+    const result = await run("DELETE FROM issues WHERE id = ?", [id]);
     if (result.changes === 0) return c.json({ error: "Issue not found" }, 404);
 
     return c.json({ ok: true }, 200);
@@ -428,7 +435,7 @@ app.openapi(addIssueLabel, async (c) => {
     if (isNaN(issueId)) return c.json({ error: "Invalid issue ID" }, 400);
 
     const body = c.req.valid("json");
-    await run("INSERT OR IGNORE INTO issue_labels (issue_id, label_id) VALUES (?, ?)", issueId, body.label_id);
+    await run("INSERT OR IGNORE INTO issue_labels (issue_id, label_id) VALUES (?, ?)", [issueId, body.label_id]);
     return c.json({ ok: true }, 201);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -460,7 +467,7 @@ app.openapi(removeIssueLabel, async (c) => {
     const labelId = parseInt(params.lid, 10);
     if (isNaN(issueId) || isNaN(labelId)) return c.json({ error: "Invalid ID" }, 400);
 
-    await run("DELETE FROM issue_labels WHERE issue_id = ? AND label_id = ?", issueId, labelId);
+    await run("DELETE FROM issue_labels WHERE issue_id = ? AND label_id = ?", [issueId, labelId]);
     return c.json({ ok: true }, 200);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -488,7 +495,7 @@ app.openapi(listComments, async (c) => {
     const issueId = parseInt(idStr, 10);
     if (isNaN(issueId)) return c.json({ error: "Invalid issue ID" }, 400);
 
-    const comments = await query("SELECT * FROM comments WHERE issue_id = ? ORDER BY created_at ASC", issueId);
+    const comments = await query("SELECT * FROM comments WHERE issue_id = ? ORDER BY created_at ASC", [issueId]);
     return c.json({ comments }, 200);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -524,8 +531,8 @@ app.openapi(createComment, async (c) => {
     const content = body.content.trim();
     if (!content) return c.json({ error: "Content is required" }, 400);
 
-    await run("INSERT INTO comments (issue_id, content) VALUES (?, ?)", issueId, content);
-    const comment = await get("SELECT * FROM comments WHERE rowid = last_insert_rowid()");
+    const result = await run("INSERT INTO comments (issue_id, content) VALUES (?, ?)", [issueId, content]);
+    const comment = await get("SELECT * FROM comments WHERE id = ?", [result.lastInsertRowid]);
     return c.json({ comment }, 201);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -554,7 +561,7 @@ app.openapi(deleteComment, async (c) => {
     const id = parseInt(cid, 10);
     if (isNaN(id)) return c.json({ error: "Invalid comment ID" }, 400);
 
-    const result = await run("DELETE FROM comments WHERE id = ?", id);
+    const result = await run("DELETE FROM comments WHERE id = ?", [id]);
     if (result.changes === 0) return c.json({ error: "Comment not found" }, 404);
 
     return c.json({ ok: true }, 200);
@@ -605,7 +612,7 @@ app.openapi(listProjects, async (c) => {
          (SELECT COUNT(*) FROM issues WHERE project_id = p.id) as issue_count,
          (SELECT COUNT(*) FROM issues WHERE project_id = p.id AND status = 'done') as done_count
        FROM projects p ORDER BY p.created_at DESC LIMIT ? OFFSET ?`,
-      limit, offset,
+      [limit, offset],
     );
 
     return c.json({ projects, total, page, limit }, 200);
@@ -672,14 +679,14 @@ app.openapi(createProject, async (c) => {
     const name = body.name.trim();
     if (!name) return c.json({ error: "Name is required" }, 400);
 
-    await run(
+    const result = await run(
       `INSERT INTO projects (name, icon, description, status, priority, lead, start_date, target_date)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      name, body.icon || "📋", body.description || "", body.status || "planned",
-      body.priority || "none", body.lead || "", body.start_date || "", body.target_date || "",
+      [name, body.icon || "📋", body.description || "", body.status || "planned",
+      body.priority || "none", body.lead || "", body.start_date || "", body.target_date || ""],
     );
 
-    const project = await get("SELECT * FROM projects WHERE rowid = last_insert_rowid()");
+    const project = await get("SELECT * FROM projects WHERE id = ?", [result.lastInsertRowid]);
     return c.json({ project }, 201);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -739,10 +746,10 @@ app.openapi(updateProject, async (c) => {
     setClauses.push("updated_at = datetime('now')");
     setParams.push(id);
 
-    const result = await run("UPDATE projects SET " + setClauses.join(", ") + " WHERE id = ?", ...setParams);
+    const result = await run("UPDATE projects SET " + setClauses.join(", ") + " WHERE id = ?", [...setParams]);
     if (result.changes === 0) return c.json({ error: "Project not found" }, 404);
 
-    const project = await get("SELECT * FROM projects WHERE id = ?", id);
+    const project = await get("SELECT * FROM projects WHERE id = ?", [id]);
     return c.json({ project }, 200);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -769,7 +776,7 @@ app.openapi(deleteProject, async (c) => {
     const id = parseInt(idStr, 10);
     if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
 
-    const result = await run("DELETE FROM projects WHERE id = ?", id);
+    const result = await run("DELETE FROM projects WHERE id = ?", [id]);
     if (result.changes === 0) return c.json({ error: "Project not found" }, 404);
 
     return c.json({ ok: true }, 200);
@@ -852,8 +859,8 @@ app.openapi(createLabel, async (c) => {
     const name = body.name.trim();
     if (!name) return c.json({ error: "Name is required" }, 400);
 
-    await run("INSERT INTO labels (name, color) VALUES (?, ?)", name, body.color || "#6b7280");
-    const label = await get("SELECT * FROM labels WHERE rowid = last_insert_rowid()");
+    const result = await run("INSERT INTO labels (name, color) VALUES (?, ?)", [name, body.color || "#6b7280"]);
+    const label = await get("SELECT * FROM labels WHERE id = ?", [result.lastInsertRowid]);
     return c.json({ label }, 201);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -899,10 +906,10 @@ app.openapi(updateLabel, async (c) => {
     if (setClauses.length === 0) return c.json({ error: "No fields to update" }, 400);
 
     setParams.push(id);
-    const result = await run("UPDATE labels SET " + setClauses.join(", ") + " WHERE id = ?", ...setParams);
+    const result = await run("UPDATE labels SET " + setClauses.join(", ") + " WHERE id = ?", [...setParams]);
     if (result.changes === 0) return c.json({ error: "Label not found" }, 404);
 
-    const label = await get("SELECT * FROM labels WHERE id = ?", id);
+    const label = await get("SELECT * FROM labels WHERE id = ?", [id]);
     return c.json({ label }, 200);
   } catch (err: unknown) {
     return c.json({ error: (err as Error).message }, 500);
@@ -929,7 +936,7 @@ app.openapi(deleteLabel, async (c) => {
     const id = parseInt(idStr, 10);
     if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
 
-    const result = await run("DELETE FROM labels WHERE id = ?", id);
+    const result = await run("DELETE FROM labels WHERE id = ?", [id]);
     if (result.changes === 0) return c.json({ error: "Label not found" }, 404);
 
     return c.json({ ok: true }, 200);
