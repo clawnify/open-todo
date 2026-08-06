@@ -2,6 +2,7 @@
 
 # OpenClaw Todo App: The Open-Source Linear Alternative for SaaS
 
+[![Deploy with Clawnify](https://app.clawnify.com/deploy-button.svg)](https://app.clawnify.com/deploy?repo=clawnify/open-todo)
 [![GitHub stars](https://img.shields.io/github/stars/clawnify/open-todo?style=social)](https://github.com/clawnify/open-todo/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![OpenClaw Ecosystem](https://img.shields.io/badge/Ecosystem-OpenClaw-blue)](https://github.com/openclaw/openclaw)
