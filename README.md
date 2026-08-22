@@ -1,6 +1,6 @@
-<img src="readme-banner.png" alt="Open Todo preview" width="100%" />
+<img src="readme-banner.png" alt="OpenTodo preview" width="100%" />
 
-# OpenClaw Todo App: The Open-Source Linear Alternative for SaaS
+# OpenTodo: The Open-Source Linear Alternative for SaaS
 
 [![Deploy with Clawnify](https://app.clawnify.com/deploy-button.svg)](https://app.clawnify.com/deploy?repo=clawnify/open-todo)
 [![GitHub stars](https://img.shields.io/github/stars/clawnify/open-todo?style=social)](https://github.com/clawnify/open-todo/stargazers)
@@ -15,7 +15,7 @@ Built with **Preact + Hono + SQLite**. Ships with a dual-mode UI: one for humans
 
 ## What Is It?
 
-Clawnify Todo App is a production-ready issue tracker framework designed for the OpenClaw community. Think of it as an open-source Linear alternative — a project management UI you can self-host, customize, and embed in any SaaS product.
+Clawnify OpenTodo is a production-ready issue tracker framework designed for the OpenClaw community. Think of it as an open-source Linear alternative — a project management UI you can self-host, customize, and embed in any SaaS product.
 
 Unlike Linear or Jira, this runs entirely on your own infrastructure with no API keys, no vendor lock-in, and no per-seat pricing. Track issues with status workflows, organize into projects, tag with colored labels, and comment for collaboration — all out of the box. It is the perfect foundation for building internal tools, headless project dashboards, or task-heavy admin panels.
 

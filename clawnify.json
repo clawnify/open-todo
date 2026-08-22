@@ -1,6 +1,6 @@
 {
   "$schema": "https://app.clawnify.com/schema/v1/clawnify.json",
-  "name": "Open Todo",
+  "name": "OpenTodo",
   "description": "",
   "app": {
     "framework": "preact+hono",

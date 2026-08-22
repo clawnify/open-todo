@@ -1,4 +1,4 @@
-# Todo App (Issue Tracker)
+# OpenTodo (Issue Tracker)
 
 A Linear-style issue tracker with projects, labels, and comments.
 

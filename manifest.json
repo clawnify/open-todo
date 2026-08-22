@@ -1,5 +1,5 @@
 {
-  "name": "Todo App",
+  "name": "OpenTodo",
   "description": "Issue tracker with projects, labels, comments, and auto-generated identifiers. Like Linear. Best for issue tracking, bug tracking, project management with detailed issues, or task management with labels and priorities.",
   "framework": "preact+hono",
   "files": [

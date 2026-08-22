@@ -4,7 +4,7 @@ import { query, get, run } from "./db.js";
 type Env = { Bindings: { DB: D1Database } };
 
 const app = createApp<Env>({
-  title: "Todo App",
+  title: "OpenTodo",
   version: "1.0.0",
   description: "A Linear-style issue tracker with projects, labels, and comments.",
 });
