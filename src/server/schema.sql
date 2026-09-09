@@ -56,8 +56,9 @@ CREATE TABLE IF NOT EXISTS _meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-INSERT OR IGNORE INTO _meta (key, value) VALUES ('issue_counter', '0');
-INSERT OR IGNORE INTO _meta (key, value) VALUES ('identifier_prefix', 'TASK');
+-- Defaults for issue_counter / identifier_prefix are seeded by the app on the
+-- first request (see ensureSeeded in src/server/index.ts). This file is applied
+-- as DDL only: an INSERT here fails the whole deploy.
 
 CREATE INDEX IF NOT EXISTS idx_issues_project ON issues(project_id);
 CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
