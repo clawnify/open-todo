@@ -9,6 +9,27 @@ const app = createApp<Env>({
   description: "A Linear-style issue tracker with projects, labels, and comments.",
 });
 
+// schema.sql is applied as DDL only by the deploy pipeline, so the _meta
+// defaults are written here instead, on the first request of each isolate.
+let seeded = false;
+
+async function ensureSeeded(): Promise<void> {
+  if (seeded) return;
+  try {
+    await run("INSERT OR IGNORE INTO _meta (key, value) VALUES (?, ?)", ["issue_counter", "0"]);
+    await run("INSERT OR IGNORE INTO _meta (key, value) VALUES (?, ?)", ["identifier_prefix", "TASK"]);
+    seeded = true;
+  } catch {
+    seeded = false;
+  }
+}
+
+// Runs after createApp's own initDB middleware, so the DB is already bound.
+app.use("*", async (_c, next) => {
+  await ensureSeeded();
+  await next();
+});
+
 // ── Shared Schemas ─────────────────────────────────────────────────
 
 const ErrorSchema = z.object({ error: z.string() }).openapi("Error");
@@ -74,9 +95,14 @@ const IdParam = z.object({ id: z.string().openapi({ description: "Resource ID (i
 async function nextIdentifier(): Promise<string> {
   const prefix = await get<{ value: string }>("SELECT value FROM _meta WHERE key = 'identifier_prefix'");
   const counter = await get<{ value: string }>("SELECT value FROM _meta WHERE key = 'issue_counter'");
-  const next = parseInt(counter?.value || "0", 10) + 1;
-  await run("UPDATE _meta SET value = ? WHERE key = 'issue_counter'", [String(next)]);
-  return `${prefix?.value || "TASK"}-${next}`;
+  const next = parseInt(counter?.value ?? "0", 10) + 1;
+  // Upsert, not UPDATE: an UPDATE matches zero rows when the row is missing,
+  // which would hand every issue the same identifier.
+  await run(
+    "INSERT INTO _meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    ["issue_counter", String(next)],
+  );
+  return `${prefix?.value ?? "TASK"}-${next}`;
 }
 
 // ── Stats ──────────────────────────────────────────────────────────
